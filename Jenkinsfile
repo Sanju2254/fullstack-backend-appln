@@ -3,7 +3,7 @@ pipeline {
 
     tools {
         maven 'Maven3'
-        jdk 'JDK17'
+        jdk 'jdk17'
     }
 
     stages {
@@ -23,12 +23,6 @@ pipeline {
         stage('Docker Build') {
             steps {
                 sh 'docker build -t fullstack-backend .'
-            }
-        }
-
-        stage('Run') {
-            steps {
-                sh 'docker run -d -p 9090:9090 fullstack-backend'
             }
         }
     }
