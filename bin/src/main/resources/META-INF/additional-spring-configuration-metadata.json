@@ -1,0 +1,47 @@
+{"properties": [
+  {
+    "name": "aws.accessKey",
+    "type": "java.lang.String",
+    "description": "A description for 'aws.accessKey'"
+  },
+  {
+    "name": "jwt.secret",
+    "type": "java.lang.String",
+    "description": "A description for 'jwt.secret'"
+  },
+  {
+    "name": "jwt.expiration",
+    "type": "java.lang.String",
+    "description": "A description for 'jwt.expiration'"
+  },
+  {
+    "name": "aws.secretKey",
+    "type": "java.lang.String",
+    "description": "A description for 'aws.secretKey'"
+  },
+  {
+    "name": "aws.region",
+    "type": "java.lang.String",
+    "description": "A description for 'aws.region'"
+  },
+  {
+    "name": "aws.bucketName",
+    "type": "java.lang.String",
+    "description": "A description for 'aws.bucketName'"
+  },
+  {
+    "name": "aws.bucketName",
+    "type": "java.lang.String",
+    "description": "A description for 'aws.bucketName'"
+  },
+  {
+    "name": "aws.bucketName",
+    "type": "java.lang.String",
+    "description": "A description for 'aws.bucketName'"
+  },
+  {
+    "name": "aws.secretKey",
+    "type": "java.lang.String",
+    "description": "A description for 'aws.secretKey'"
+  }
+]}

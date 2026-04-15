@@ -1,9 +1,29 @@
 pipeline {
     agent any
 
+    environment {
+        DB_USERNAME = credentials('DB_USERNAME')
+        DB_PASSWORD = credentials('DB_PASSWORD')
+        JWT_SECRET = credentials('JWT_SECRET')
+        MAIL_USERNAME = credentials('MAIL_USERNAME')
+        MAIL_PASSWORD = credentials('MAIL_PASSWORD')
+        AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
+        AWS_SECRET_KEY = credentials('AWS_SECRET_KEY')
+
+        KAFKA_BOOTSTRAP_SERVERS = "34.237.111.250:9092"
+
+        IMAGE_NAME = "fullstack-backend"
+    }
+
     stages {
 
-        stage('Build JAR') {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'YOUR_GIT_REPO'
+            }
+        }
+
+        stage('Build Jar') {
             steps {
                 sh 'mvn clean package -DskipTests'
             }
@@ -11,56 +31,36 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t fullstack-backend .'
+                sh """
+                docker build -t $IMAGE_NAME .
+                """
             }
         }
 
         stage('Stop Old Container') {
             steps {
-                sh '''
-                docker stop fullstack-container || true
-                docker rm fullstack-container || true
-                '''
-            }
-        }
-
-        stage('Create Env File') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'DB_URL', variable: 'DB_URL'),
-                    string(credentialsId: 'DB_USER', variable: 'DB_USER'),
-                    string(credentialsId: 'DB_PASS', variable: 'DB_PASS'),
-                    string(credentialsId: 'JWT_SECRET', variable: 'JWT_SECRET'),
-                    string(credentialsId: 'MAIL_USER', variable: 'MAIL_USER'),
-                    string(credentialsId: 'MAIL_PASS', variable: 'MAIL_PASS'),
-                    string(credentialsId: 'AWS_ACCESS', variable: 'AWS_ACCESS'),
-                    string(credentialsId: 'AWS_SECRET', variable: 'AWS_SECRET')
-                ]) {
-                    sh '''
-                    cat <<EOF > app.env
-DB_URL=$DB_URL
-DB_USER=$DB_USER
-DB_PASS=$DB_PASS
-JWT_SECRET=$JWT_SECRET
-MAIL_USER=$MAIL_USER
-MAIL_PASS=$MAIL_PASS
-AWS_ACCESS=$AWS_ACCESS
-AWS_SECRET=$AWS_SECRET
-EOF
-                    '''
-                }
+                sh """
+                docker rm -f fullstack-app || true
+                """
             }
         }
 
         stage('Run Container') {
             steps {
-                sh '''
+                sh """
                 docker run -d \
-                --name fullstack-container \
+                --name fullstack-app \
                 -p 9090:9090 \
-                --env-file app.env \
-                fullstack-backend
-                '''
+                -e DB_USERNAME=$DB_USERNAME \
+                -e DB_PASSWORD=$DB_PASSWORD \
+                -e JWT_SECRET=$JWT_SECRET \
+                -e MAIL_USERNAME=$MAIL_USERNAME \
+                -e MAIL_PASSWORD=$MAIL_PASSWORD \
+                -e AWS_ACCESS_KEY=$AWS_ACCESS_KEY \
+                -e AWS_SECRET_KEY=$AWS_SECRET_KEY \
+                -e KAFKA_BOOTSTRAP_SERVERS=$KAFKA_BOOTSTRAP_SERVERS \
+                $IMAGE_NAME
+                """
             }
         }
     }
