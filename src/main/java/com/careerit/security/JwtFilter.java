@@ -12,8 +12,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.careerit.dto.ErrorResponse;
 import com.careerit.util.JwtUtil;
+import com.careerit.dto.ErrorResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -35,7 +35,13 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // ✅ ALWAYS skip auth endpoints
+        // ✅ Skip OPTIONS (CORS preflight)
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // ✅ Skip public APIs
         if (path.startsWith("/api/auth/")) {
             filterChain.doFilter(request, response);
             return;
@@ -43,7 +49,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        // ✅ if no token → block only protected routes
+        // ❌ No token
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             sendError(response);
             return;
@@ -52,6 +58,7 @@ public class JwtFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);
 
         try {
+            // ❌ invalid token
             if (!jwtUtil.validateToken(token)) {
                 sendError(response);
                 return;
@@ -60,11 +67,16 @@ public class JwtFilter extends OncePerRequestFilter {
             String email = jwtUtil.extractEmail(token);
             String role = jwtUtil.extractRole(token);
 
+            // ✅ normalize role
+            if (!role.startsWith("ROLE_")) {
+                role = "ROLE_" + role;
+            }
+
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
                             email,
                             null,
-                            List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                            List.of(new SimpleGrantedAuthority(role))
                     );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -78,6 +90,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private void sendError(HttpServletResponse response) throws IOException {
         ErrorResponse error = new ErrorResponse("Invalid or Expired Token");
+
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
         response.getWriter().write(mapper.writeValueAsString(error));
