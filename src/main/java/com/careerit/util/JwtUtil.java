@@ -1,13 +1,15 @@
 package com.careerit.util;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
@@ -15,17 +17,26 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret}")
+    // MUST match docker env variable exactly
+    @Value("${JWT_SECRET}")
     private String secret;
 
-    @Value("${jwt.expiration}")
+    @Value("${jwt.expiration:86400000}") // default 1 day
     private long expiration;
 
+    
+    @PostConstruct
+    public void debug() {
+        System.out.println("JWT SECRET = " + secret);
+    }
+    // 🔐 FIXED: Proper Base64 decoding + secure key
     private SecretKey getKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
+        byte[] keyBytes = Decoders.BASE64.decode(secret);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(String email,String role) {
+    // ✅ Generate JWT token
+    public String generateToken(String email, String role) {
         return Jwts.builder()
                 .setSubject(email)
                 .claim("role", role)
@@ -35,22 +46,27 @@ public class JwtUtil {
                 .compact();
     }
 
+    // ✅ Extract email (subject)
     public String extractEmail(String token) {
         return getClaims(token).getSubject();
     }
+
+    // ✅ Extract role
     public String extractRole(String token) {
         return getClaims(token).get("role", String.class);
     }
 
+    // ✅ Validate token
     public boolean validateToken(String token) {
         try {
             Claims claims = getClaims(token);
             return claims.getExpiration().after(new Date());
-        } catch (JwtException e) {
+        } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
     }
 
+    // 🔐 Internal method to parse token
     private Claims getClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getKey())
