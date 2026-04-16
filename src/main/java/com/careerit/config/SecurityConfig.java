@@ -33,10 +33,16 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authorizeHttpRequests(auth -> auth
+
+                // ✅ PUBLIC APIs FIRST
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+
+                // 🔒 ROLE BASED APIs
                 .requestMatchers("/products/upload").hasRole("ADMIN")
                 .requestMatchers("/products/**").hasAnyRole("USER", "ADMIN")
+
+                // 🔒 EVERYTHING ELSE
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

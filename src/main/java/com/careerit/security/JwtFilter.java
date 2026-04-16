@@ -35,48 +35,46 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // ✅ Skip OPTIONS (CORS preflight)
+        // ✅ Skip OPTIONS
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // ✅ Skip public APIs
-        if (path.startsWith("/api/auth/")) {
+        // ✅ Public APIs
+        if (path.startsWith("/api/auth/") ||
+            path.startsWith("/swagger-ui") ||
+            path.startsWith("/v3/api-docs")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String authHeader = request.getHeader("Authorization");
 
-        // ❌ No token
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            sendError(response);
+            sendError(response, "Missing Token");
             return;
         }
 
         String token = authHeader.substring(7);
 
         try {
-            // ❌ invalid token
             if (!jwtUtil.validateToken(token)) {
-                sendError(response);
+                sendError(response, "Invalid or Expired Token");
                 return;
             }
 
             String email = jwtUtil.extractEmail(token);
             String role = jwtUtil.extractRole(token);
 
-            // ✅ normalize role
-            if (!role.startsWith("ROLE_")) {
-                role = "ROLE_" + role;
-            }
+            // ✅ FIX ROLE FORMAT
+            role = role.replace("ROLE_", "");
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
                             email,
                             null,
-                            List.of(new SimpleGrantedAuthority(role))
+                            List.of(new SimpleGrantedAuthority("ROLE_" + role))
                     );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -84,15 +82,16 @@ public class JwtFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
 
         } catch (Exception e) {
-            sendError(response);
+            sendError(response, "Token Processing Error: " + e.getMessage());
         }
     }
 
-    private void sendError(HttpServletResponse response) throws IOException {
-        ErrorResponse error = new ErrorResponse("Invalid or Expired Token");
-
+    private void sendError(HttpServletResponse response, String msg) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
-        response.getWriter().write(mapper.writeValueAsString(error));
+
+        response.getWriter().write(
+                mapper.writeValueAsString(new ErrorResponse(msg))
+        );
     }
 }
