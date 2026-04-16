@@ -14,29 +14,31 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.careerit.security.JwtFilter;
 
-@Configuration
-public class SecurityConfig {
-    @Autowired
-    private JwtFilter jwtFilter;
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(csrf -> csrf.disable())
-            .cors(Customizer.withDefaults())
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/register", "/login",
-                                 "/forgot-password", "/reset-password")
-                .permitAll()
-                .requestMatchers("/products/upload").hasRole("ADMIN")
-                .requestMatchers("/products/**").hasAnyRole("USER", "ADMIN")
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+    @Configuration
+    public class SecurityConfig {
 
-        return http.build();
+        @Autowired
+        private JwtFilter jwtFilter;
+
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+            return new BCryptPasswordEncoder();
+        }
+
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
+            http
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.disable())
+                .authorizeHttpRequests(auth -> auth
+                    .requestMatchers("/api/auth/**").permitAll()   // ✅ FIXED
+                    .requestMatchers("/products/upload").hasRole("ADMIN")
+                    .requestMatchers("/products/**").hasAnyRole("USER", "ADMIN")
+                    .anyRequest().authenticated()
+                )
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
+            return http.build();
+        }
     }
-}
